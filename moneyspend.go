@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	startDate          = "2020.11.1"
 	version            = "1.0.2"
 	outputDataFileName = "output_data.txt"
 	showItemsPerLine   = 1
@@ -21,12 +22,12 @@ const (
 
 var spendMap map[string]int
 var spendList spendMapItems
-var classMap = map[int]string{1: "吃喝", 2: "生活", 3: "医疗", 4: "出行", 8: "爬虫", 10: "家里", 11: "强制支出", 99: "退出"}
+var classMap = map[int]string{1: "吃喝", 2: "生活", 3: "医疗", 4: "出行", 8: "女人", 10: "家里", 11: "强制支出", 99: "退出"}
 
 var isVersion = flag.Bool("v", false, "show the version.")
 var reClass = flag.Bool("r", false, "reclass all the items.")
-var passClass = flag.Bool("p", false, "pass the classify procedure.")
-var moneyCsvFileName = flag.String("c", "冯敬翔的记账本 - Sheet1.csv", "the name of money csv file.")
+var classify = flag.Bool("c", false, "do the classify procedure.")
+var moneyCsvFileName = flag.String("n", "data.csv", "the name of money csv file.")
 
 func main() {
 	preProcess()
@@ -38,19 +39,53 @@ func main() {
 	classifyItems()
 }
 
+func preProcess() {
+	flag.Parse()
+	if *isVersion {
+		log.Printf("moneyspend version: %v", version)
+		os.Exit(0)
+	}
+
+	spendMap = make(map[string]int)
+	dateMap = make(map[int]map[int]map[int]int)
+
+	MustInitBolt(*reClass)
+}
+
+func processMoneyCsv() {
+	f, err := os.Open(*moneyCsvFileName)
+	if err != nil {
+		log.Fatalf("open csv err: %v", err)
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	reader.Read()
+
+	for {
+		line, _ := reader.Read()
+		if len(line) == 0 {
+			break
+		}
+		processOneDay(line)
+	}
+}
+
 func classifyItems() {
 	notClassedKeyNum := 0
+	allKeyNum := 0
 	for _, item := range spendList {
-		if boltGet(item.name) == "" {
+		allKeyNum++
+		if BoltGet(item.name) == "" {
 			notClassedKeyNum++
 		}
 	}
-	log.Printf("not classed key num: %v", notClassedKeyNum)
+	log.Printf("allKeyNum: %v,not classed key num: %v", allKeyNum, notClassedKeyNum)
 
 	classSpendMap := make(map[string]int)
 	for _, item := range spendList {
-		if boltGet(item.name) == "" {
-			if *passClass {
+		if BoltGet(item.name) == "" {
+			if !*classify {
 				continue
 			}
 			log.Printf("classMap: %v", classMap)
@@ -64,10 +99,10 @@ func classifyItems() {
 			if !ok {
 				log.Fatalf("the class: %v not supported", classNum)
 			}
-			boltSet(item.name, class)
+			BoltSet(item.name, class)
 			log.Printf("item.name: %v,class: %v saved!", item.name, class)
 		}
-		class := boltGet(item.name)
+		class := BoltGet(item.name)
 		classSpendMap[class] += item.price
 	}
 
@@ -76,18 +111,6 @@ func classifyItems() {
 		total += money
 	}
 	log.Printf("classSpendMap: %v,total: %v", classSpendMap, total)
-}
-
-func preProcess() {
-	flag.Parse()
-	if *isVersion {
-		log.Printf("version: %v", version)
-		os.Exit(0)
-	}
-
-	spendMap = make(map[string]int)
-
-	initBolt()
 }
 
 func formatPrint() {
@@ -112,6 +135,8 @@ func formatPrint() {
 	}
 
 	log.Printf("generate output_data.txt done!")
+
+	generateMonthCostPic()
 }
 
 func generateSpendItems(spendMap map[string]int) spendMapItems {
@@ -125,35 +150,27 @@ func generateSpendItems(spendMap map[string]int) spendMapItems {
 	return spendItems
 }
 
-func processMoneyCsv() {
-	f, err := os.Open(*moneyCsvFileName)
-	if err != nil {
-		log.Fatalf("open csv err: %v", err)
-	}
-	defer f.Close()
-
-	reader := csv.NewReader(f)
-	reader.Read()
-
-	for {
-		line, _ := reader.Read()
-		if len(line) == 0 {
-			break
-		}
-		processOneDay(line)
-	}
-}
-
 func processOneDay(line []string) {
 	date, detail, daySumStr := line[0], line[1], line[2]
-	if date == "" || detail == "" || detail == "/" || date == "2020.11.1" {
+	if date == "" || detail == "" || date == startDate {
 		return
 	}
+
 	if daySumStr == "" {
 		log.Fatalf("line total spend is null,date: %v", date)
 	}
 
 	daySum := stringToInt(daySumStr)
+
+	if detail == "/" {
+		if daySum != 0 {
+			log.Fatalf("detail is /,but sum not 0,date: %v", date)
+		}
+		return
+	}
+
+	year, month, day := parseDate(date)
+	setDateMap(year, month, day, daySum)
 
 	var detailSum int
 	items := strings.Split(detail, "，")
@@ -188,7 +205,11 @@ func processItem(item string, spendMap map[string]int) int {
 		itemName = string(runeItem[:i+1])
 	}
 
-	itemPrice := stringToInt(string(runeItem[i+1:]))
+	itemPriceStr := string(runeItem[i+1:])
+	if itemPriceStr == "" {
+		log.Fatalf("%v no price", itemName)
+	}
+	itemPrice := stringToInt(itemPriceStr)
 	if addMoney {
 		itemPrice = -itemPrice
 	}
@@ -207,7 +228,7 @@ func checkEqual(detailSum int, daySum int, date string) {
 func stringToInt(str string) int {
 	itemPrice, err := strconv.Atoi(str)
 	if err != nil {
-		log.Fatalf("item price atoi error: %v,str: %v", err, str)
+		log.Fatalf("stringToInt atoi error: %v,str: %v", err, str)
 	}
 	return itemPrice
 }
@@ -221,4 +242,15 @@ func decr(i *int) {
 
 func isNum(c int32) bool {
 	return c >= '0' && c <= '9'
+}
+
+func parseDate(date string) (int, int, int) {
+	splitedDate := strings.Split(date, ".")
+	if len(splitedDate) != 3 {
+		log.Fatalf("date error: %v", date)
+	}
+	year := stringToInt(splitedDate[0])
+	month := stringToInt(splitedDate[1])
+	day := stringToInt(splitedDate[2])
+	return year, month, day
 }
