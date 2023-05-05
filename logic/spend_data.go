@@ -115,6 +115,31 @@ func (spendData *spendData) getMonthCosts() ([]float64, []string) {
 	return monthCosts, monthCostLabels
 }
 
+func (spendData *spendData) getWeekCosts() ([]float64, []string) {
+	start := time.Date(2020, time.November, 2, 0, 0, 0, 0, time.Local)
+	end := time.Now()
+
+	var weekCosts []float64
+	var weekCostLabels []string
+
+	current := start
+	for current.Before(end) || current.Equal(end) {
+		weekCostLabels = append(weekCostLabels,
+			cast.ToString(current.Year())+"."+cast.ToString(int(current.Month()))+"."+cast.ToString(current.Day()))
+
+		weekCost := 0
+		for i := 1; i <= 50; i++ {
+			cost := spendData.getDayCost(current.Year(), int(current.Month()), current.Day())
+			weekCost += cost
+			current = current.AddDate(0, 0, 1)
+		}
+
+		weekCosts = append(weekCosts, cast.ToFloat64(weekCost))
+	}
+
+	return weekCosts, weekCostLabels
+}
+
 func (spendData *spendData) getDayCosts() ([]float64, []string) {
 	start := time.Date(2020, time.November, 1, 0, 0, 0, 0, time.Local)
 	end := time.Now()

@@ -10,6 +10,7 @@ import (
 func generateCostCharts(spendData *spendData) {
 	generateYearCostChart(spendData)
 	generateMonthCostChart(spendData)
+	generateWeekCostChart(spendData)
 	// generateDayCostChart(spendData)
 }
 
@@ -23,6 +24,12 @@ func generateMonthCostChart(spendData *spendData) {
 	monthCosts, monthCostLabels := spendData.getMonthCosts()
 
 	generateChart("month_spend", monthCosts, monthCostLabels)
+}
+
+func generateWeekCostChart(spendData *spendData) {
+	weekCosts, weekCostLabels := spendData.getWeekCosts()
+
+	generateChart("week_spend", weekCosts, weekCostLabels)
 }
 
 func generateDayCostChart(spendData *spendData) {
