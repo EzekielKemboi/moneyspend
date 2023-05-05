@@ -10,3 +10,4 @@ version:
 
 clean:
 	rm ./moneyspend
+	rm -r ./output
