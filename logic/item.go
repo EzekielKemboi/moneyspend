@@ -1,4 +1,4 @@
-package main
+package logic
 
 type spendMapItem struct {
 	name  string

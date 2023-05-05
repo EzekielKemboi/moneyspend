@@ -1,6 +1,4 @@
-*.csv
-boltdb
-output_data.txt
-MonthSpend.png
+data
 moneyspend
-my.db
+bolt/my.db
+output

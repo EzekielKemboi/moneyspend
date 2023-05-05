@@ -1,4 +1,4 @@
-module my/boltdb
+module github.com/EzekielKemboi/moneyspend
 
 go 1.16
 

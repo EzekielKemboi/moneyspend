@@ -1,4 +1,4 @@
-package main
+package bolt
 
 import (
 	"log"
@@ -15,7 +15,7 @@ var boltdb *bolt.DB
 func MustInitBolt(freshStart bool) {
 	var err error
 
-	boltdb, err = bolt.Open("my.db", 0600, nil)
+	boltdb, err = bolt.Open("bolt/my.db", 0600, nil)
 	if err != nil {
 		log.Fatalf("open boltdb failed,err: %v", err)
 	}
