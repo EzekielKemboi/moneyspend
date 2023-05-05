@@ -1,2 +1,4 @@
-*.csv
-冯敬翔的记账本 - Sheet1.csv
+data
+moneyspend
+bolt/my.db
+output
