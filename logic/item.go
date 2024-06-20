@@ -16,5 +16,13 @@ func (s spendMapItems) Swap(i, j int) {
 }
 
 func (s spendMapItems) Less(i, j int) bool {
-	return s[i].price < s[j].price
+	pricei := s[i].price
+	pricej := s[j].price
+	if pricei < 0 {
+		pricei = -pricei
+	}
+	if pricej < 0 {
+		pricej = -pricej
+	}
+	return pricei < pricej
 }

@@ -42,13 +42,10 @@ func GenerateOutput(spendData *spendData) {
 	log.Printf("generate MonthSpend.png done!")
 }
 
-func generateSpendItems(spendMap map[string]int) spendMapItems {
+func generateSpendItems(spendMap map[string]*spendMapItem) spendMapItems {
 	var spendItems spendMapItems
-	for key, val := range spendMap {
-		spendItems = append(spendItems, &spendMapItem{
-			name:  key,
-			price: val,
-		})
+	for _, val := range spendMap {
+		spendItems = append(spendItems, val)
 	}
 	return spendItems
 }

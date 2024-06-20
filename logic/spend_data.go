@@ -9,20 +9,21 @@ import (
 )
 
 type spendData struct {
-	spendMap     map[string]int
+	spendMap  map[string]*spendMapItem
+	spendList spendMapItems
+
 	dayCostMap   map[int]map[int]map[int]int
 	monthCostMap map[int]map[int]int
 	yearCostMap  map[int]int
-	spendList    spendMapItems
 }
 
 func newSpendData() *spendData {
 	return &spendData{
-		spendMap: map[string]int{},
+		spendMap: map[string]*spendMapItem{},
 	}
 }
 
-func (spendData *spendData) genSpendItems() {
+func (spendData *spendData) genSpendList() {
 	spendData.spendList = generateSpendItems(spendData.spendMap)
 
 	sort.Sort(sort.Reverse(spendData.spendList))
@@ -128,7 +129,7 @@ func (spendData *spendData) getWeekCosts() ([]float64, []string) {
 			cast.ToString(current.Year())+"."+cast.ToString(int(current.Month()))+"."+cast.ToString(current.Day()))
 
 		weekCost := 0
-		for i := 1; i <= 50; i++ {
+		for i := 1; i <= 7; i++ {
 			cost := spendData.getDayCost(current.Year(), int(current.Month()), current.Day())
 			weekCost += cost
 			current = current.AddDate(0, 0, 1)
